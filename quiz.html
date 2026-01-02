@@ -259,7 +259,13 @@ const resultData = document.getElementById("resultData");
 function startQuiz() {
   loadQuestion();
 }
-
+// ====== ランダマイズ ======
+function shuffleArray(array) {
+  return array
+    .map(value => ({ value, sort: Math.random() }))
+    .sort((a, b) => a.sort - b.sort)
+    .map(({ value }) => value);
+}
 // ====== 問題表示 ======
 function loadQuestion() {
   answered = false;
@@ -272,11 +278,17 @@ function loadQuestion() {
   questionText.textContent = `Q${q.id}. ${q.question}`;
 
   choicesDiv.innerHTML = "";
-  q.choices.forEach((c, i) => {
+  // ★ 表示用にシャッフル
+  const shuffledChoices = shuffleArray([...q.choices]);
+
+  shuffledChoices.forEach(choiceText => {
     const btn = document.createElement("div");
     btn.className = "choice";
-    btn.textContent = c;
-    btn.onclick = () => selectAnswer(i);
+    btn.textContent = choiceText;
+
+    // ★ indexではなく「文字列」を渡す
+    btn.onclick = () => selectAnswer(choiceText);
+
     choicesDiv.appendChild(btn);
   });
 
@@ -306,7 +318,7 @@ function selectAnswer(index) {
   const q = questions[current];
   const correct = q.answerIndex;
 
-  const userAnswer = q.choices[index];
+  const userAnswer = index;
   const timeSpent = 30 - timeLeft;
 
   const isAnswerCorrect = userAnswer === correct;
