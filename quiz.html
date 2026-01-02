@@ -28,6 +28,45 @@ body {
 }
 
 h2 { margin-top: 0; }
+/* トップページ全体 */
+#topPageArea {
+  background: #f9fbff;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+/* 説明テキスト */
+#topPageArea::first-line {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+}
+
+/* 入力欄 */
+#startId {
+  margin-top: 10px;
+  margin-bottom: 14px;
+  width: 80px;
+  padding: 8px 6px;
+
+  font-size: 16px;
+  text-align: center;
+
+  border-radius: 8px;
+  border: 1.5px solid #bbb;
+  background: #ffffff;
+
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* フォーカス時 */
+#startId:focus {
+  outline: none;
+  border-color: #4caf50;
+  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+}
 
 .choice {
   display: block;
@@ -203,14 +242,26 @@ button:hover {
 .choice-list li {
   margin-bottom: 4px;
 }
+/* スマホ微調整 */
+@media (max-width: 480px) {
+  #startId {
+    font-size: 18px;
+    width: 90px;
+  }
+}
 </style>
 <script src="gk_questions.js"></script>
 </head>
 
 <body>
 <div class="container">
-
-  <div id="quizArea">
+  <div id="topPageArea">
+    <h2>試験対策用一問一答アプリ</h2>
+    次のIDから取り組む:<br>
+    <input type="number" id="startId" value="1" style="width: 60px;" min="1"/>
+    <button id="btn-topPageStart" class="btn-retry" onclick="startQuiz();">はじめる</button>
+  </div>
+  <div id="quizArea" class="hidden">
     <div class="timer" id="timer">残り時間：30秒</div>
     <h2 id="questionText"></h2>
     <div id="choices"></div>
@@ -254,9 +305,15 @@ const nextBtn = document.getElementById("nextBtn");
 const quizArea = document.getElementById("quizArea");
 const resultArea = document.getElementById("resultArea");
 const resultData = document.getElementById("resultData");
+const topPageArea = document.getElementById("topPageArea");
+const topPageStart = document.getElementById("btn-topPageStart");
 
 // ====== クイズ開始 ======
 function startQuiz() {
+  topPageArea.classList.add("hidden");
+  quizArea.classList.remove("hidden");
+  const startId = parseInt(document.getElementById("startId").value, 10) || 1;
+  current = startId - 1;
   loadQuestion();
 }
 // ====== ランダマイズ ======
@@ -422,7 +479,7 @@ function showResult() {
   });
 }
 
-startQuiz();
+// startQuiz();
 </script>
 </body>
 </html>
