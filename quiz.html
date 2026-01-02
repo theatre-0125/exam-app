@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Quiz</title>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #f5f5f5;
+  margin: 0;
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.container {
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 100%;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+h2 { margin-top: 0; }
+
+.choice {
+  display: block;
+  margin: 10px 0;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  background: #fafafa;
+}
+
+.choice:hover {
+  background: #e9f2ff;
+}
+
+.timer {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.red {
+  color: red;
+}
+
+#explanation {
+  margin-top: 15px;
+  padding: 12px;
+  background: #eef7ff;
+  border-radius: 8px;
+}
+
+button {
+  margin-top: 15px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  font-size: 16px;
+  background: #0078ff;
+  color: white;
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+.hidden {
+  display: none;
+}
+
+/* 途中終了ボタン */
+.btn-quit {
+  margin-top: 20px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+
+  background: #ffffff;
+  color: #c62828;
+  border: 2px solid #c62828;
+
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-quit:hover {
+  background: #c62828;
+  color: #ffffff;
+}
+
+/* 途中終了ボタン */
+.btn-reload {
+  margin-top: 20px;
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+
+  background: #ffffff;
+  color: #7a6f6f;
+  border: 2px solid #7a6f6f;
+
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-reload:hover {
+  background: #7a6f6f;
+  color: #ffffff;
+}
+
+/* 再挑戦ボタン */
+.btn-retry {
+  margin-top: 25px;
+  width: 100%;
+  padding: 14px;
+  border-radius: 10px;
+  font-size: 17px;
+  font-weight: bold;
+
+  background: linear-gradient(135deg, #4caf50, #2e7d32);
+  color: #ffffff;
+  border: none;
+
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-retry:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.2);
+}
+
+/* ===== 総括 ===== */
+.summary-box {
+  background: #f0f6ff;
+  padding: 16px;
+  border-radius: 10px;
+  margin-bottom: 24px;
+}
+
+.summary-box p {
+  margin: 6px 0;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+/* ===== ふりかえり ===== */
+.review-item {
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.review-header {
+  padding: 12px;
+  cursor: pointer;
+  font-weight: bold;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.review-header.correct {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.review-header.incorrect {
+  background: #fdecea;
+  color: #c62828;
+}
+
+.review-body {
+  display: none;
+  padding: 12px;
+  background: #fafafa;
+  font-size: 14px;
+}
+
+.review-body p {
+  margin: 6px 0;
+}
+
+.choice-list {
+  padding-left: 18px;
+}
+
+.choice-list li {
+  margin-bottom: 4px;
+}
+</style>
+<script src="gk_questions.js"></script>
+</head>
+
+<body>
+<div class="container">
+
+  <div id="quizArea">
+    <div class="timer" id="timer">残り時間：30秒</div>
+    <h2 id="questionText"></h2>
+    <div id="choices"></div>
+    <div id="explanation" class="hidden"></div>
+    <button id="nextBtn" class="hidden">次へ</button>
+    <div class="button-group" style="display: flex; justify-content: space-between;gap: 10px;">
+      <button class="btn-reload" onclick="location.reload();">最初からやる</button>
+      <button class="btn-quit" onclick="showResult();">もうここでやめる</button>
+    </div>
+  </div>
+
+  <div id="resultArea" class="hidden">
+    <h2>結果発表</h2>
+
+    <!-- 総括 -->
+    <div id="summary" class="summary-box"></div>
+
+    <!-- 問題ふりかえり -->
+    <div id="reviewList"></div>
+    <button class="btn-retry" onclick="location.reload();">最初からやる</button>
+  </div>
+
+</div>
+
+
+<script>
+// ====== 状態管理 ======
+let current = 0;
+let timeLeft = 30;
+let timerInterval;
+let answered = false;
+
+const results = []; // { id, userAnswer, timeSpent }
+
+// DOM取得
+const questionText = document.getElementById("questionText");
+const choicesDiv = document.getElementById("choices");
+const timerLabel = document.getElementById("timer");
+const explanationDiv = document.getElementById("explanation");
+const nextBtn = document.getElementById("nextBtn");
+const quizArea = document.getElementById("quizArea");
+const resultArea = document.getElementById("resultArea");
+const resultData = document.getElementById("resultData");
+
+// ====== クイズ開始 ======
+function startQuiz() {
+  loadQuestion();
+}
+
+// ====== 問題表示 ======
+function loadQuestion() {
+  answered = false;
+  timeLeft = 30;
+  explanationDiv.classList.add("hidden");
+  nextBtn.classList.add("hidden");
+  timerLabel.classList.remove("red");
+
+  const q = questions[current];
+  questionText.textContent = `Q${q.id}. ${q.question}`;
+
+  choicesDiv.innerHTML = "";
+  q.choices.forEach((c, i) => {
+    const btn = document.createElement("div");
+    btn.className = "choice";
+    btn.textContent = c;
+    btn.onclick = () => selectAnswer(i);
+    choicesDiv.appendChild(btn);
+  });
+
+  startTimer();
+}
+
+// ====== タイマー ======
+function startTimer() {
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    timeLeft--;
+    timerLabel.textContent = `残り時間：${timeLeft}秒`;
+
+    if (timeLeft <= 0) {
+      timerLabel.classList.add("red");
+      clearInterval(timerInterval);
+    }
+  }, 1000);
+}
+
+// ====== 回答処理 ======
+function selectAnswer(index) {
+  if (answered) return;
+  answered = true;
+  clearInterval(timerInterval);
+
+  const q = questions[current];
+  const correct = q.answerIndex;
+
+  const userAnswer = q.choices[index];
+  const timeSpent = 30 - timeLeft;
+
+  const isAnswerCorrect = userAnswer === correct;
+
+  // 結果保存
+  results.push({
+    id: q.id,
+    userAnswer: userAnswer,
+    timeSpent: timeSpent < 0 ? 30 : timeSpent
+  });
+
+  // 解説表示
+  explanationDiv.classList.remove("hidden");
+  explanationDiv.innerHTML =
+    `
+    <b>
+      A${q.id}. 
+      <span style="color:${isAnswerCorrect ? 'blue' : 'red'}">
+        ${correct}
+      </span>
+    ${isAnswerCorrect ? "" : "<br><span style=\"font-size: small\">あなたの答え: " + userAnswer + "</span>"}
+    </b>
+    <p>
+    解説：${q.explanation}
+    </p>`;
+
+  nextBtn.classList.remove("hidden");
+}
+
+// ====== 次の問題へ ======
+nextBtn.onclick = () => {
+  current++;
+  if (current >= questions.length) {
+    showResult();
+  } else {
+    loadQuestion();
+  }
+};
+
+// ====== リザルト ======
+function showResult() {
+  quizArea.classList.add("hidden");
+  resultArea.classList.remove("hidden");
+  const summary = document.getElementById("summary");
+  const reviewList = document.getElementById("reviewList");
+
+  let correctCount = 0;
+  let totalTime = 0;
+
+  results.forEach(r => {
+    const q = questions.find(q => q.id === r.id);
+    if (r.userAnswer === q.answerIndex) correctCount++;
+    totalTime += r.timeSpent;
+  });
+
+  const accuracy = Math.round((correctCount / results.length) * 100);
+  const speed = 100 - Math.round((totalTime / (results.length * 30)) * 100);
+
+  // 総括
+  summary.innerHTML = `
+    <p>正答率：${accuracy}%</p>
+    <p>解答スピード：${speed}点</p>
+  `;
+
+  // ふりかえり
+  reviewList.innerHTML = "";
+  results.forEach((r ,index) => {
+    const q = questions.find(q => q.id === r.id);
+    const isCorrect = r.userAnswer === q.answerIndex;
+
+    const item = document.createElement("div");
+    item.className = "review-item";
+
+    const header = document.createElement("div");
+    header.className = `review-header ${isCorrect ? "correct" : "incorrect"}`;
+    header.innerHTML = `
+      <span>${index + 1}: 
+      ${q.question}</span>
+      <span>${isCorrect ? "〇" : "×"}</span>
+    `;
+
+    const body = document.createElement("div");
+    body.className = "review-body";
+    body.innerHTML = `
+      <ul class="choice-list">
+        ${q.choices.map(c => `<li>${c}</li>`).join("")}
+      </ul>
+      <p><b>正答：</b>${q.answerIndex}</p>
+      <p><b>あなたの回答：</b>${r.userAnswer}</p>
+      <p><b>解説：</b>${q.explanation}</p>
+      <p><b>かかった時間：</b>${r.timeSpent} 秒</p>
+    `;
+
+    header.onclick = () => {
+      body.style.display = body.style.display === "block" ? "none" : "block";
+    };
+
+    item.appendChild(header);
+    item.appendChild(body);
+    reviewList.appendChild(item);
+  });
+}
+
+startQuiz();
+</script>
+</body>
+</html>
